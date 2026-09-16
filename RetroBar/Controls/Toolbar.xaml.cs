@@ -44,7 +44,8 @@ namespace RetroBar.Controls
 
         private enum MenuItem : uint
         {
-            OpenParentFolder = CommonContextMenuItem.Paste + 1
+            OpenParentFolder = CommonContextMenuItem.Paste + 1,
+            ShowOnQuickLaunch
         }
 
         public static DependencyProperty PathProperty = DependencyProperty.Register(nameof(Path), typeof(string), typeof(Toolbar), new PropertyMetadata(OnPathChanged));
@@ -209,6 +210,88 @@ namespace RetroBar.Controls
             _ignoreNextUpdate = true;
 
             Settings.Instance.QuickLaunchOrder = itemPaths;
+        }
+
+        /// <summary>
+        /// Moves a Quick Launch icon to sit immediately before/after another icon in the
+        /// one shared order that both the visible toolbar and the chevron's overflow
+        /// flyout are views over, or all the way to the end of that order when there's no
+        /// specific target icon (e.g. dropped on empty flyout space, or directly on the
+        /// chevron button before it even opened) - matching real XP, where dragging an
+        /// icon past the last one that fits is what sends it into overflow, rather than
+        /// pinning it there through any separate persisted flag.
+        /// </summary>
+        public void MoveQuickLaunchItem(ShellFile draggedFile, ShellFile targetFile, bool insertAfterTarget)
+        {
+            if (Folder == null || draggedFile == null || ReferenceEquals(draggedFile, targetFile))
+            {
+                return;
+            }
+
+            if (!TryGetQuickLaunchOrderWithout(draggedFile, out List<ShellFile> order))
+            {
+                return;
+            }
+
+            int insertIndex = targetFile != null ? order.IndexOf(targetFile) : -1;
+
+            if (insertIndex < 0)
+            {
+                insertIndex = order.Count;
+            }
+            else if (insertAfterTarget)
+            {
+                insertIndex++;
+            }
+
+            order.Insert(insertIndex, draggedFile);
+
+            ApplyQuickLaunchOrder(order);
+        }
+
+        /// <summary>
+        /// Moves a Quick Launch icon to the very front of the shared order, so it's as
+        /// visible as it can be. This is the click-based way back onto the toolbar from
+        /// the overflow flyout's own right-click menu ("Show on Quick Launch") - dragging
+        /// an icon out of that open flyout isn't reliable, since native Windows menus
+        /// have their own built-in mouse handling that fights this drag library on that
+        /// side (dragging an icon onto the chevron to send it into overflow, the other
+        /// direction, doesn't have this problem - see ToolbarDropHandler).
+        /// </summary>
+        public void MoveQuickLaunchItemToFront(ShellFile file)
+        {
+            if (Folder == null || file == null)
+            {
+                return;
+            }
+
+            if (!TryGetQuickLaunchOrderWithout(file, out List<ShellFile> order))
+            {
+                return;
+            }
+
+            order.Insert(0, file);
+
+            ApplyQuickLaunchOrder(order);
+        }
+
+        private bool TryGetQuickLaunchOrderWithout(ShellFile file, out List<ShellFile> order)
+        {
+            order = ((ListCollectionView)CollectionViewSource.GetDefaultView(Folder.Files))
+                .OfType<ShellFile>()
+                .ToList();
+
+            return order.Remove(file);
+        }
+
+        private void ApplyQuickLaunchOrder(List<ShellFile> order)
+        {
+            // small optimization, only other toolbars with this folder need to reload when the setting is saved.
+            _ignoreNextUpdate = true;
+
+            Settings.Instance.QuickLaunchOrder = order.Select(file => file.Path).ToList();
+
+            Refresh();
         }
 
         public void AddToSource(StringCollection filesToAdd)
@@ -602,6 +685,20 @@ namespace RetroBar.Controls
             // Quick Launch click, since this runs on the click path before the item even launches. A
             // blank/fallback label is a far smaller problem than that, so every lookup here is guarded.
             builder.AddSeparator();
+
+            if (_overflowPanel != null && _overflowPanel.OverflowItems.Contains(file))
+            {
+                // Only offered for icons currently sitting in the overflow flyout - an
+                // exact, click-based way back onto the visible bar, since dragging one
+                // out of the open flyout isn't reliable (see MoveQuickLaunchItemToFront).
+                builder.AddCommand(new ShellMenuCommand
+                {
+                    Flags = MFT.BYCOMMAND,
+                    Label = TryFindResource("show_on_quick_launch") as string ?? "Show on Quick Launch",
+                    UID = (uint)MenuItem.ShowOnQuickLaunch
+                });
+            }
+
             builder.AddCommand(new ShellMenuCommand
             {
                 Flags = MFT.BYCOMMAND,
@@ -628,6 +725,16 @@ namespace RetroBar.Controls
             if (action == ((uint)MenuItem.OpenParentFolder).ToString())
             {
                 ShellHelper.StartProcess(Folder.Path);
+                return true;
+            }
+
+            if (action == ((uint)MenuItem.ShowOnQuickLaunch).ToString())
+            {
+                if (items?.Length > 0 && items[0] is ShellFile file)
+                {
+                    MoveQuickLaunchItemToFront(file);
+                }
+
                 return true;
             }
 

@@ -37,7 +37,10 @@
                       Visibility="Collapsed"
                       Focusable="False"
                       SizeChanged="OverflowToggle_OnSizeChanged"
-                      ContextMenuService.IsEnabled="False">
+                      ContextMenuService.IsEnabled="False"
+                      dd:DragDrop.IsDropTarget="True"
+                      dd:DragDrop.DropHandler="{Binding RelativeSource={RelativeSource AncestorType=local:Toolbar}, Path=DropHandler}"
+                      dd:DragDrop.DragDropContext="Toolbar">
             <DockPanel.Dock>
                 <Binding Converter="{StaticResource dockOrientationConverter}"
                          ConverterParameter="trailing"
@@ -65,10 +68,7 @@
             <ToggleButton.ContextMenu>
                 <ContextMenu x:Name="OverflowMenu"
                              Placement="Bottom"
-                             StaysOpen="False"
-                             dd:DragDrop.IsDropTarget="True"
-                             dd:DragDrop.DropHandler="{Binding RelativeSource={RelativeSource AncestorType=local:Toolbar}, Path=DropHandler}"
-                             dd:DragDrop.DragDropContext="Toolbar">
+                             StaysOpen="False">
                     <!-- Icon goes through MenuItem's own real icon column (via this implicit
                          DataTemplate, the same mechanism WPF uses to render any bound Header
                          object) instead of being drawn inline next to the text - that's what
