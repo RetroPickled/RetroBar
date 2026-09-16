@@ -340,15 +340,6 @@ namespace RetroBar.Utilities
             set => Set(ref _quickLaunchOrder, value);
         }
 
-        // Paths of Quick Launch shortcuts the user has chosen to always keep in the
-        // overflow flyout, freeing up row space for the others regardless of width.
-        private List<string> _quickLaunchHiddenItems = [];
-        public List<string> QuickLaunchHiddenItems
-        {
-            get => _quickLaunchHiddenItems;
-            set => Set(ref _quickLaunchHiddenItems, value);
-        }
-
         // User-set size (in DIPs, along whichever axis matches the taskbar's orientation) for
         // the Quick Launch icon area, set by dragging its gripper. Shared across every taskbar/
         // monitor. Null means auto-size (fill whatever space is naturally available), which was

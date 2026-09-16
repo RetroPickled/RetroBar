@@ -10,7 +10,6 @@ using ManagedShell.Common.Helpers;
 using ManagedShell.Common.Logging;
 using ManagedShell.ShellFolders;
 using ManagedShell.ShellFolders.Enums;
-using RetroBar.Extensions;
 using RetroBar.Utilities;
 
 namespace RetroBar.Controls
@@ -45,8 +44,7 @@ namespace RetroBar.Controls
 
         private enum MenuItem : uint
         {
-            OpenParentFolder = CommonContextMenuItem.Paste + 1,
-            CustomizeOverflow
+            OpenParentFolder = CommonContextMenuItem.Paste + 1
         }
 
         public static DependencyProperty PathProperty = DependencyProperty.Register(nameof(Path), typeof(string), typeof(Toolbar), new PropertyMetadata(OnPathChanged));
@@ -116,12 +114,6 @@ namespace RetroBar.Controls
             else if (e.PropertyName == nameof(Settings.TaskbarScale))
             {
                 Refresh();
-            }
-            else if (e.PropertyName == nameof(Settings.QuickLaunchHiddenItems))
-            {
-                // A shortcut's forced-overflow status changed; re-run the panel's layout pass
-                // so it picks up the new IsForcedOverflow result immediately.
-                _overflowPanel?.InvalidateMeasure();
             }
             else if (e.PropertyName == nameof(Settings.QuickLaunchWidth))
             {
@@ -386,7 +378,6 @@ namespace RetroBar.Controls
             }
 
             _overflowPanel.OverflowChanged += OverflowPanel_OnOverflowChanged;
-            _overflowPanel.IsForcedOverflow = item => (item as ShellFile)?.IsAlwaysInOverflow() ?? false;
             OverflowMenu.ItemsSource = _overflowPanel.OverflowItems;
             UpdateOverflowButtonSize();
             UpdateOverflowButtonVisibility();
@@ -564,6 +555,15 @@ namespace RetroBar.Controls
                 total += vertical ? desired.Height : desired.Width;
             }
 
+            if (_overflowPanel.Children.Count > count)
+            {
+                // There are more icons than the default count shows, so the chevron is
+                // about to reserve space on this same row - without padding for it here,
+                // that reservation would squeeze out the very last icon this was
+                // supposed to fit, showing one fewer than intended.
+                total += _overflowPanel.OverflowButtonSize;
+            }
+
             return Math.Max(MinQuickLaunchSize, total);
         }
 
@@ -608,12 +608,6 @@ namespace RetroBar.Controls
                 Label = TryFindResource("open_folder") as string ?? "Open Folder",
                 UID = (uint)MenuItem.OpenParentFolder
             });
-            builder.AddCommand(new ShellMenuCommand
-            {
-                Flags = MFT.BYCOMMAND,
-                Label = TryFindResource("customize_quick_launch_overflow_menu") as string ?? "Customize Quick Launch Overflow...",
-                UID = (uint)MenuItem.CustomizeOverflow
-            });
 
             return builder;
         }
@@ -634,13 +628,6 @@ namespace RetroBar.Controls
             if (action == ((uint)MenuItem.OpenParentFolder).ToString())
             {
                 ShellHelper.StartProcess(Folder.Path);
-                return true;
-            }
-
-            if (action == ((uint)MenuItem.CustomizeOverflow).ToString())
-            {
-                Point cursor = new Point(System.Windows.Forms.Cursor.Position.X, System.Windows.Forms.Cursor.Position.Y);
-                QuickLaunchOverflowWindow.Open(Folder, cursor);
                 return true;
             }
 

@@ -120,10 +120,6 @@
     <s:String x:Key="behavior_heading">Behavior</s:String>
     <s:String x:Key="invert_heading">Invert</s:String>
 
-    <s:String x:Key="customize_quick_launch_overflow">Customize Quick Launch Overflow</s:String>
-    <s:String x:Key="customize_quick_launch_overflow_instruction">Select an item, then choose whether it should always appear in the overflow menu:</s:String>
-    <s:String x:Key="always_in_overflow_heading">Always in Overflow</s:String>
-
     <s:String x:Key="start_text">Start</s:String>
     <s:String x:Key="start_text_xp">start</s:String>
     <s:String x:Key="start_button_tip_98">Click here to begin.</s:String>
@@ -170,7 +166,6 @@
     <s:String x:Key="hide">Hide</s:String>
 
     <s:String x:Key="open_folder">&amp;Open Folder</s:String>
-    <s:String x:Key="customize_quick_launch_overflow_menu">&amp;Customize Quick Launch Overflow...</s:String>
 
     <s:String x:Key="ime_input_tip_enabled">Right-click to open IME options.</s:String>
     <s:String x:Key="ime_input_tip_disabled">IME disabled</s:String>

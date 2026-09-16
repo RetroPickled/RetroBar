@@ -75,14 +75,6 @@ namespace RetroBar.Controls
         /// </summary>
         public event EventHandler OverflowChanged;
 
-        /// <summary>
-        /// Optional predicate checked per data item (the child's DataContext). When it returns
-        /// true, that item is always sent to the overflow list and never consumes row space,
-        /// regardless of whether it would otherwise fit — lets the user manually pin specific
-        /// icons into the overflow flyout to free up room for others.
-        /// </summary>
-        public Func<object, bool> IsForcedOverflow { get; set; }
-
         private readonly HashSet<UIElement> _visible = new HashSet<UIElement>();
         private readonly Dictionary<UIElement, int> _rowOf = new Dictionary<UIElement, int>();
         private readonly Dictionary<UIElement, double> _mainOffsetOf = new Dictionary<UIElement, double>();
@@ -96,7 +88,6 @@ namespace RetroBar.Controls
 
             int count = InternalChildren.Count;
             double[] sizes = new double[count];
-            bool[] forced = new bool[count];
             double crossAxisDesired = 0;
 
             Size childConstraint = new Size(double.PositiveInfinity, double.PositiveInfinity);
@@ -112,16 +103,13 @@ namespace RetroBar.Controls
                     crossAxisDesired = cross;
                 }
 
-                object item = (child as FrameworkElement)?.DataContext;
-                forced[i] = item != null && (IsForcedOverflow?.Invoke(item) ?? false);
-
                 sizes[i] = vertical ? child.DesiredSize.Height : child.DesiredSize.Width;
             }
 
-            // First pass: try to wrap everything that isn't manually pinned across the
-            // available rows using the full row budget on every row - no chevron space
-            // reserved yet, since one might not even be needed.
-            PackResult pass = Pack(count, sizes, forced, rows, limit, limited, limit);
+            // First pass: try to wrap everything across the available rows using the
+            // full row budget on every row - no chevron space reserved yet, since one
+            // might not even be needed.
+            PackResult pass = Pack(count, sizes, rows, limit, limited, limit);
 
             if (pass.SpaceOverflowCount > 0)
             {
@@ -130,7 +118,7 @@ namespace RetroBar.Controls
                 // it's about to become visible and would otherwise steal space out
                 // from under whatever we just laid out.
                 double lastRowBudget = limited ? Math.Max(0, limit - OverflowButtonSize) : limit;
-                pass = Pack(count, sizes, forced, rows, limit, limited, lastRowBudget);
+                pass = Pack(count, sizes, rows, limit, limited, lastRowBudget);
             }
 
             _visible.Clear();
@@ -208,14 +196,14 @@ namespace RetroBar.Controls
         }
 
         /// <summary>
-        /// Greedily packs non-pinned children left-to-right (top-to-bottom when vertical)
-        /// into up to `rows` rows, moving to the next row whenever an item would overflow
-        /// the current one. `lastRowLimit` lets the caller reserve chevron space on just
-        /// the final row without shrinking the earlier ones. Anything that still doesn't
-        /// fit once every row is full - or that's manually pinned via IsForcedOverflow -
-        /// comes back with Overflow[i] set instead of a row assignment.
+        /// Greedily packs children left-to-right (top-to-bottom when vertical) into up
+        /// to `rows` rows, moving to the next row whenever an item would overflow the
+        /// current one. `lastRowLimit` lets the caller reserve chevron space on just the
+        /// final row without shrinking the earlier ones. Anything that still doesn't fit
+        /// once every row is full comes back with Overflow[i] set instead of a row
+        /// assignment.
         /// </summary>
-        private static PackResult Pack(int count, double[] sizes, bool[] forced, int rows, double limit, bool limited, double lastRowLimit)
+        private static PackResult Pack(int count, double[] sizes, int rows, double limit, bool limited, double lastRowLimit)
         {
             int[] rowOf = new int[count];
             double[] mainOffset = new double[count];
@@ -228,12 +216,6 @@ namespace RetroBar.Controls
 
             for (int i = 0; i < count; i++)
             {
-                if (forced[i])
-                {
-                    overflow[i] = true;
-                    continue;
-                }
-
                 while (true)
                 {
                     double rowBudget = limited ? (row == rows - 1 ? lastRowLimit : limit) : double.PositiveInfinity;
